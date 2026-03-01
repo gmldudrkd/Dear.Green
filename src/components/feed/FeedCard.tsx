@@ -35,6 +35,10 @@ interface Props {
 
 export default function FeedCard({ item, index, onLike }: Props) {
   const diet = dietLabels[item.dietLevel];
+  const hasPhoto = !!item.photoPlaceholder;
+
+  const summaryText = `${item.nickname}님은 오늘 ${mealLabels[item.mealType]}으로 ${diet.label} 식을 먹었어요!`;
+  const summaryEmoji = item.dietLevel === "vegan" ? "🥗" : item.dietLevel === "ovo-lacto" ? "🥚" : item.dietLevel === "pesco" ? "🐟" : item.dietLevel === "pollo" ? "🍗" : "🌿";
 
   return (
     <motion.div
@@ -56,15 +60,20 @@ export default function FeedCard({ item, index, onLike }: Props) {
         </span>
       </div>
 
-      {/* 메시지 */}
-      {item.autoMessage && (
-        <p className="mt-2 text-xs text-earth-500">{item.autoMessage}</p>
+      {hasPhoto ? (
+        <>
+          {item.autoMessage && (
+            <p className="mt-2 text-xs text-earth-500">{item.autoMessage}</p>
+          )}
+          <div className="mt-3 flex h-32 items-center justify-center rounded-xl bg-sage-50 text-4xl">
+            {item.photoPlaceholder}
+          </div>
+        </>
+      ) : (
+        <p className="mt-3 text-sm text-earth-600">
+          {summaryText} {summaryEmoji}
+        </p>
       )}
-
-      {/* 사진 플레이스홀더 */}
-      <div className="mt-3 flex h-32 items-center justify-center rounded-xl bg-sage-50 text-4xl">
-        {item.photoPlaceholder}
-      </div>
 
       {/* 하단 */}
       <div className="mt-3 flex items-center justify-between">

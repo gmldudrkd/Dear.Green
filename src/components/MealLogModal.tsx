@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePoints } from "@/context/PointsContext";
 import MindfulnessTimer from "@/components/timer/MindfulnessTimer";
 
 const TIMER_BONUS_IP = 5;
+const PHOTO_BONUS_IP = 5;
 
 const dietLevels = [
   { id: "vegan", label: "비건", desc: "동물성 식품 없음", ip: 30 },
@@ -20,7 +21,7 @@ const compromises = [
   "고기 양을 줄여봤어요",
 ] as const;
 
-type Phase = "select" | "timer" | "complete";
+type Phase = "select" | "photo" | "timer" | "complete";
 
 interface Props {
   meal: { id: string; label: string; icon: string } | null;
@@ -35,6 +36,8 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
   );
   const [phase, setPhase] = useState<Phase>("select");
   const [earnedIP, setEarnedIP] = useState(0);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { addIP } = usePoints();
 
   if (!meal) return null;
@@ -46,21 +49,33 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
     ? selectedLevel.ip + checkedCompromises.size * 3
     : 0;
 
-  const handleStartTimer = () => {
+  const handleGoToPhoto = () => {
     if (!selectedLevel) return;
+    setPhase("photo");
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPhotoPreview(url);
+  };
+
+  const handleGoToTimer = () => {
     setPhase("timer");
   };
 
   const handleTimerComplete = useCallback(
     (completed: boolean) => {
-      const bonus = completed ? TIMER_BONUS_IP : 0;
-      const total = baseIP + bonus;
+      const timerBonus = completed ? TIMER_BONUS_IP : 0;
+      const photoBonus = photoPreview ? PHOTO_BONUS_IP : 0;
+      const total = baseIP + timerBonus + photoBonus;
       addIP(total);
       setEarnedIP(total);
       setPhase("complete");
       onRecord();
     },
-    [baseIP, addIP, onRecord]
+    [baseIP, photoPreview, addIP, onRecord]
   );
 
   const toggleCompromise = (index: number) => {
@@ -73,10 +88,12 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
   };
 
   const handleClose = () => {
+    if (photoPreview) URL.revokeObjectURL(photoPreview);
     setSelectedDiet(null);
     setCheckedCompromises(new Set());
     setPhase("select");
     setEarnedIP(0);
+    setPhotoPreview(null);
     onClose();
   };
 
@@ -166,15 +183,98 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
               )}
 
               <button
-                onClick={handleStartTimer}
+                onClick={handleGoToPhoto}
                 disabled={!selectedDiet}
                 className="mt-5 w-full rounded-xl bg-sage-600 py-3 text-sm font-semibold text-white transition-colors disabled:bg-sand-300 disabled:text-earth-400"
               >
                 {selectedDiet
-                  ? `기록하기 (+${baseIP} IP)`
+                  ? `다음 (+${baseIP} IP)`
                   : "단계를 선택해주세요"}
               </button>
             </>
+          )}
+
+          {phase === "photo" && (
+            <motion.div
+              className="flex flex-col items-center gap-4 py-2"
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            >
+              <div className="text-center">
+                <span className="text-3xl">📸</span>
+                <h2 className="mt-2 text-lg font-bold text-earth-800">
+                  오늘의 한 끼
+                </h2>
+                <p className="mt-1 text-xs text-earth-400">
+                  사진을 남기면 +{PHOTO_BONUS_IP} IP 보너스!
+                </p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoSelect}
+              />
+
+              {photoPreview ? (
+                <motion.div
+                  className="relative w-full"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                >
+                  <img
+                    src={photoPreview}
+                    alt="식사 사진"
+                    className="h-48 w-full rounded-2xl object-cover"
+                  />
+                  <button
+                    onClick={() => {
+                      URL.revokeObjectURL(photoPreview);
+                      setPhotoPreview(null);
+                    }}
+                    className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-sm text-white"
+                  >
+                    ✕
+                  </button>
+                </motion.div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex h-48 w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-sage-300 bg-sage-50/50 transition-colors hover:border-sage-400 hover:bg-sage-50"
+                >
+                  <span className="text-4xl text-sage-400">🍽️</span>
+                  <span className="text-sm font-medium text-sage-500">
+                    사진 추가하기
+                  </span>
+                  <span className="text-[11px] text-earth-400">
+                    탭하여 갤러리에서 선택
+                  </span>
+                </button>
+              )}
+
+              <div className="flex w-full gap-3">
+                <button
+                  onClick={handleGoToTimer}
+                  className="flex-1 rounded-xl bg-sand-200 py-3 text-sm font-medium text-earth-500 transition-colors hover:bg-sand-300"
+                >
+                  건너뛰기
+                </button>
+                <button
+                  onClick={handleGoToTimer}
+                  className={`flex-1 rounded-xl py-3 text-sm font-semibold transition-colors ${
+                    photoPreview
+                      ? "bg-sage-600 text-white"
+                      : "bg-sand-300 text-earth-400"
+                  }`}
+                  disabled={!photoPreview}
+                >
+                  {photoPreview ? `다음 (+${PHOTO_BONUS_IP} IP 보너스)` : "사진을 추가해주세요"}
+                </button>
+              </div>
+            </motion.div>
           )}
 
           {phase === "timer" && (

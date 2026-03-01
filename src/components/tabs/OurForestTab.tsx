@@ -16,7 +16,7 @@ const ForestCanvas3D = dynamic(
 
 export default function OurForestTab() {
   return (
-    <div className="flex h-full flex-col px-4 pt-2 pb-2">
+    <div className="flex h-full flex-col">
       <ForestCanvas3D />
     </div>
   );

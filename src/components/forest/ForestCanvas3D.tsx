@@ -8,11 +8,20 @@ import TreePopup from "./TreePopup";
 import { generateForestUsers } from "@/lib/mockForest";
 import type { ForestUser } from "@/types/forest";
 
-/* ── 초록 대지 ────────────────────────────── */
+/* ── 구면 좌표 계산 ─────────────────────────── */
+const SPHERE_RADIUS = 18;
+
+function getSurfaceY(x: number, z: number): number {
+  const d2 = x * x + z * z;
+  if (d2 >= SPHERE_RADIUS * SPHERE_RADIUS) return 0;
+  return -SPHERE_RADIUS + Math.sqrt(SPHERE_RADIUS * SPHERE_RADIUS - d2);
+}
+
+/* ── 둥근 대지 (구) ──────────────────────────── */
 function Ground() {
   return (
-    <mesh position={[0, -0.25, 0]} receiveShadow>
-      <boxGeometry args={[24, 0.5, 24]} />
+    <mesh position={[0, -SPHERE_RADIUS, 0]} receiveShadow>
+      <sphereGeometry args={[SPHERE_RADIUS, 64, 64]} />
       <meshStandardMaterial color="#7BA55E" />
     </mesh>
   );
@@ -54,30 +63,33 @@ function Rock({ position }: { position: [number, number, number] }) {
   );
 }
 
-/* ── 장식 세트 (고정 배치) ──────────────────── */
+/* ── 장식 세트 (구면 배치) ───────────────────── */
 function Decorations() {
+  const grassData: [number, number][] = [
+    [-8, -5], [-6, 7], [9, -3], [7, 8],
+    [-3, -9], [5, -7], [-9, 2], [2, 9],
+  ];
+  const flowerData: { xz: [number, number]; color: string }[] = [
+    { xz: [-7, 3], color: "#FFB7C5" },
+    { xz: [8, 5], color: "#FFD700" },
+    { xz: [-4, -7], color: "#DDA0DD" },
+    { xz: [6, -6], color: "#FFB7C5" },
+  ];
+  const rockData: [number, number][] = [
+    [9, -8], [-8, -8], [3, 10],
+  ];
+
   return (
     <>
-      {/* 풀 */}
-      <Grass position={[-8, 0.15, -5]} />
-      <Grass position={[-6, 0.15, 7]} />
-      <Grass position={[9, 0.15, -3]} />
-      <Grass position={[7, 0.15, 8]} />
-      <Grass position={[-3, 0.15, -9]} />
-      <Grass position={[5, 0.15, -7]} />
-      <Grass position={[-9, 0.15, 2]} />
-      <Grass position={[2, 0.15, 9]} />
-
-      {/* 꽃 */}
-      <Flower position={[-7, 0, 3]} color="#FFB7C5" />
-      <Flower position={[8, 0, 5]} color="#FFD700" />
-      <Flower position={[-4, 0, -7]} color="#DDA0DD" />
-      <Flower position={[6, 0, -6]} color="#FFB7C5" />
-
-      {/* 돌 */}
-      <Rock position={[9, 0.12, -8]} />
-      <Rock position={[-8, 0.12, -8]} />
-      <Rock position={[3, 0.12, 10]} />
+      {grassData.map(([x, z], i) => (
+        <Grass key={`g${i}`} position={[x, getSurfaceY(x, z) + 0.15, z]} />
+      ))}
+      {flowerData.map(({ xz: [x, z], color }, i) => (
+        <Flower key={`f${i}`} position={[x, getSurfaceY(x, z), z]} color={color} />
+      ))}
+      {rockData.map(([x, z], i) => (
+        <Rock key={`r${i}`} position={[x, getSurfaceY(x, z) + 0.12, z]} />
+      ))}
     </>
   );
 }
@@ -124,13 +136,13 @@ export default function ForestCanvas3D() {
       </div>
 
       <div
-        className="relative min-h-0 flex-1 overflow-hidden rounded-2xl"
+        className="relative min-h-0 flex-1 overflow-hidden"
         style={{
           background: "linear-gradient(to bottom, #D6EAF8, #E8F8E0)",
         }}
       >
         <Canvas
-          camera={{ position: [12, 10, 12], fov: 45 }}
+          camera={{ position: [14, 12, 14], fov: 45 }}
           style={{ width: "100%", height: "100%" }}
         >
           <Lighting />
@@ -142,6 +154,7 @@ export default function ForestCanvas3D() {
               key={user.id}
               user={user}
               onSelect={setSelectedUser}
+              surfaceY={getSurfaceY(user.x, user.y)}
             />
           ))}
 
@@ -149,18 +162,16 @@ export default function ForestCanvas3D() {
             makeDefault
             enableDamping
             dampingFactor={0.05}
-            autoRotate
-            autoRotateSpeed={0.5}
-            minDistance={8}
-            maxDistance={25}
-            minPolarAngle={0.3}
-            maxPolarAngle={Math.PI * 0.45}
+            minDistance={10}
+            maxDistance={35}
+            minPolarAngle={0.2}
+            maxPolarAngle={Math.PI * 0.48}
             enablePan={false}
           />
         </Canvas>
 
         <p className="absolute bottom-2 left-0 right-0 text-center text-[10px] text-earth-400/70">
-          드래그로 회전 · 핀치로 확대/축소
+          드래그로 회전 · 핀치로 확대축소 · 나무를 탭해보세요
         </p>
       </div>
 

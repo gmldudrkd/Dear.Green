@@ -42,7 +42,11 @@ export default function TabShell() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: directionRef.current > 0 ? "-20%" : "20%", opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="flex w-full flex-1 flex-col items-center gap-8"
+            className={`flex w-full flex-1 flex-col gap-8 ${
+              activeTab === "our-forest"
+                ? ""
+                : "mx-auto max-w-md items-center"
+            }`}
           >
             <ActiveComponent />
           </motion.div>

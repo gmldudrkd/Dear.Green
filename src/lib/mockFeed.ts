@@ -30,13 +30,14 @@ export function generateMockFeed(): FeedItem[] {
   return Array.from({ length: 18 }, (_, i) => {
     const nickname = nicknames[i % nicknames.length];
     const msg = feedMessages[i % feedMessages.length];
+    const hasPhoto = i % 3 === 0;
     return {
       id: `feed-${i}`,
       nickname,
       avatarEmoji: avatars[i % avatars.length],
       mealType: mealTypes[i % 3],
       dietLevel: dietLevels[Math.floor(Math.random() * dietLevels.length)],
-      photoPlaceholder: photoPlaceholders[i % photoPlaceholders.length],
+      ...(hasPhoto ? { photoPlaceholder: photoPlaceholders[i % photoPlaceholders.length] } : {}),
       timestamp: now - (i * 47 + Math.floor(Math.random() * 30)) * 60 * 1000,
       likes: Math.floor(Math.random() * 35),
       hasLiked: false,

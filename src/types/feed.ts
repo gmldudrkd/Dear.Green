@@ -6,7 +6,7 @@ export interface FeedItem {
   avatarEmoji: string;
   mealType: "breakfast" | "lunch" | "dinner";
   dietLevel: DietLevel;
-  photoPlaceholder: string;
+  photoPlaceholder?: string;
   timestamp: number;
   likes: number;
   hasLiked: boolean;

@@ -5,9 +5,9 @@ import { motion } from "framer-motion";
 export type TabId = "my-dear" | "live-green" | "our-forest";
 
 const tabs: { id: TabId; label: string; icon: string }[] = [
-  { id: "my-dear", label: "나의 식탁", icon: "🌱" },
-  { id: "live-green", label: "번지는 초록", icon: "📋" },
-  { id: "our-forest", label: "우리의 숲", icon: "🌲" },
+  { id: "my-dear", label: "My Dear", icon: "🌱" },
+  { id: "live-green", label: "Live Green", icon: "📋" },
+  { id: "our-forest", label: "Our Forest", icon: "🌲" },
 ];
 
 interface Props {

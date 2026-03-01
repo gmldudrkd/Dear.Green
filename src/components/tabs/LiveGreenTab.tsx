@@ -22,6 +22,22 @@ export default function LiveGreenTab() {
     );
   };
 
+  const handleComment = (id: string, text: string) => {
+    setFeed((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              comments: [
+                ...item.comments,
+                { id: `c-${Date.now()}`, text, timestamp: Date.now() },
+              ],
+            }
+          : item
+      )
+    );
+  };
+
   const totalToday = useMemo(
     () => feed.filter((f) => Date.now() - f.timestamp < 86400000).length,
     [feed]
@@ -39,7 +55,7 @@ export default function LiveGreenTab() {
 
       <div className="flex flex-col gap-3 px-4 pt-1">
         {feed.map((item, i) => (
-          <FeedCard key={item.id} item={item} index={i} onLike={handleLike} />
+          <FeedCard key={item.id} item={item} index={i} onLike={handleLike} onComment={handleComment} />
         ))}
       </div>
     </div>

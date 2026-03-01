@@ -53,8 +53,9 @@
 ```
 버튼 클릭 → MealLogModal 오픈
   → Phase 1: 채식 단계 선택 (+ 타협 체크박스)
-  → Phase 2: 10초 명상 타이머 (건너뛰기 가능)
-  → Phase 3: 완료 화면 (획득 IP 표시)
+  → Phase 2: 사진 업로드 (선택, +5 IP 보너스)
+  → Phase 3: 10초 명상 타이머 (건너뛰기 가능)
+  → Phase 4: 완료 화면 (획득 IP 표시)
 ```
 
 ### 3.2 10초 숨 고르기 (Mindfulness Timer)
@@ -82,8 +83,10 @@
 
 **3D 기술 구현:**
 - `next/dynamic`으로 `ssr: false` 동적 임포트 (WebGL SSR 불가)
-- `OrbitControls`: 드래그 회전, 핀치 줌, 자동 회전 (0.5 속도)
+- `OrbitControls`: 드래그 회전, 핀치 줌 (자동 회전 없음, 사용자 직접 조작)
 - 따뜻한 조명: ambient(`#F5E6D3`) + directional(`#FFE5B4`) + fill(`#B1E1FF`)
+- **구형 대지:** 반지름 18의 구(sphere) 위에 나무·장식 배치 ("리틀 플래닛" 형태)
+- **전체 화면 너비:** Our Forest 탭은 `max-w-md` 제약 없이 화면 전체 사용
 
 **복셀 나무 (5단계):**
 - Lv.1: 작은 갈색 박스 (씨앗)
@@ -92,7 +95,9 @@
 - Lv.4: 두꺼운 줄기 + 3단 피라미드 + 분홍 꽃 (큰 나무)
 - Lv.5: 큰 줄기 + 뿌리 + 4단 피라미드 + 꽃 + 새 (세계수)
 
-**인터랙션:** 호버 시 나무가 살짝 떠오름, 클릭 시 TreePopup 바텀시트.
+**닉네임 라벨:** 각 나무 꼭대기에 sin() 애니메이션으로 둥둥 떠다니는 닉네임 표시. 클릭 시 TreePopup 오픈.
+
+**인터랙션:** 호버 시 나무가 살짝 떠오름, 클릭 시 TreePopup 바텀시트. 작은 나무(씨앗 등)는 투명 히트박스로 클릭 영역 확대. 팝업이 열리면 닉네임 라벨은 숨김 처리.
 
 ---
 
@@ -108,6 +113,7 @@
 | 폴로 | +15 |
 | 플렉시테리언 | +10 |
 | 타협 체크 (폴로/플렉시) | 항목당 +3 |
+| 사진 업로드 보너스 | +5 |
 | 10초 명상 완료 보너스 | +5 |
 
 **하이드레이션 안전**: `DEFAULT_IP=10`으로 서버/클라이언트 초기값 통일, `useEffect`로 localStorage 읽기, `ready` 플래그로 렌더링 제어.
@@ -176,7 +182,7 @@
 | 폰트 | Caveat (Google Fonts), Pretendard Variable | |
 | Backend/DB (예정) | Supabase (Auth, DB, Realtime Feed) | |
 | Storage (예정) | Supabase Storage (Image upload) | |
-| 아이콘 | Lucide-react or Hand-drawn SVG | |
+| 아이콘 | 인라인 SVG (크로스 플랫폼 일관성) | |
 
 ---
 

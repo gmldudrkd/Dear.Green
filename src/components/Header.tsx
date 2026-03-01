@@ -18,7 +18,7 @@ export default function Header() {
   }, [menuOpen]);
 
   return (
-    <header className="sticky top-0 z-10 bg-sand-50/90 px-6 py-4 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 bg-sand-50/90 px-6 py-4 backdrop-blur-sm">
       <div className="mx-auto flex max-w-md items-center justify-between">
         <h1
           className="text-3xl font-bold text-earth-500"
@@ -50,7 +50,7 @@ export default function Header() {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-11 w-44 rounded-xl bg-white py-2 shadow-lg">
+            <div className="absolute right-0 top-11 z-50 w-44 rounded-xl bg-white py-2 shadow-lg">
               {loggedIn ? (
                 <>
                   <div className="border-b border-sand-100 px-4 py-2">

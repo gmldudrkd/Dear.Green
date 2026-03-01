@@ -2,12 +2,15 @@
 
 import { useState, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import type { Group } from "three";
 import type { ForestUser } from "@/types/forest";
 
 interface Props {
   user: ForestUser;
   onSelect: (user: ForestUser) => void;
+  surfaceY?: number;
+  hideLabels?: boolean;
 }
 
 /* ── Lv.1 씨앗 ─────────────────────────────── */
@@ -30,12 +33,10 @@ function SeedTree() {
 function SproutTree() {
   return (
     <group>
-      {/* 줄기 */}
       <mesh position={[0, 0.3, 0]}>
         <boxGeometry args={[0.2, 0.6, 0.2]} />
         <meshStandardMaterial color="#6B4226" />
       </mesh>
-      {/* 잎 */}
       <mesh position={[0, 0.8, 0]}>
         <boxGeometry args={[0.7, 0.7, 0.7]} />
         <meshStandardMaterial color="#7BC043" />
@@ -48,17 +49,14 @@ function SproutTree() {
 function YoungTree() {
   return (
     <group>
-      {/* 줄기 */}
       <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[0.3, 1, 0.3]} />
         <meshStandardMaterial color="#704214" />
       </mesh>
-      {/* 하단 잎 */}
       <mesh position={[0, 1.3, 0]}>
         <boxGeometry args={[1.4, 0.8, 1.4]} />
         <meshStandardMaterial color="#5B9E2D" />
       </mesh>
-      {/* 상단 잎 */}
       <mesh position={[0, 2, 0]}>
         <boxGeometry args={[0.9, 0.7, 0.9]} />
         <meshStandardMaterial color="#7BC043" />
@@ -71,27 +69,22 @@ function YoungTree() {
 function BigTree() {
   return (
     <group>
-      {/* 줄기 */}
       <mesh position={[0, 0.7, 0]}>
         <boxGeometry args={[0.5, 1.4, 0.5]} />
         <meshStandardMaterial color="#5C3317" />
       </mesh>
-      {/* 하단 잎 */}
       <mesh position={[0, 1.8, 0]}>
         <boxGeometry args={[2, 0.9, 2]} />
         <meshStandardMaterial color="#4A8C1C" />
       </mesh>
-      {/* 중단 잎 */}
       <mesh position={[0, 2.6, 0]}>
         <boxGeometry args={[1.4, 0.8, 1.4]} />
         <meshStandardMaterial color="#5B9E2D" />
       </mesh>
-      {/* 상단 잎 */}
       <mesh position={[0, 3.2, 0]}>
         <boxGeometry args={[0.8, 0.6, 0.8]} />
         <meshStandardMaterial color="#7BC043" />
       </mesh>
-      {/* 꽃 */}
       <mesh position={[0.6, 2.8, 0.5]}>
         <boxGeometry args={[0.25, 0.25, 0.25]} />
         <meshStandardMaterial color="#FFB7C5" />
@@ -108,12 +101,10 @@ function BigTree() {
 function WorldTree() {
   return (
     <group>
-      {/* 줄기 */}
       <mesh position={[0, 1, 0]}>
         <boxGeometry args={[0.7, 2, 0.7]} />
         <meshStandardMaterial color="#4A2810" />
       </mesh>
-      {/* 뿌리 */}
       <mesh position={[0.4, 0.15, 0.3]}>
         <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshStandardMaterial color="#5C3317" />
@@ -122,7 +113,6 @@ function WorldTree() {
         <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshStandardMaterial color="#5C3317" />
       </mesh>
-      {/* 잎 4단 */}
       <mesh position={[0, 2.5, 0]}>
         <boxGeometry args={[2.6, 1, 2.6]} />
         <meshStandardMaterial color="#3D7A0F" />
@@ -139,7 +129,6 @@ function WorldTree() {
         <boxGeometry args={[0.8, 0.5, 0.8]} />
         <meshStandardMaterial color="#7BC043" />
       </mesh>
-      {/* 꽃 */}
       <mesh position={[1, 3.5, 0.8]}>
         <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshStandardMaterial color="#FFB7C5" />
@@ -152,7 +141,6 @@ function WorldTree() {
         <boxGeometry args={[0.3, 0.3, 0.3]} />
         <meshStandardMaterial color="#FFB7C5" />
       </mesh>
-      {/* 새 (작은 파란 박스) */}
       <mesh position={[1.2, 4.2, 0]}>
         <boxGeometry args={[0.25, 0.2, 0.3]} />
         <meshStandardMaterial color="#5DADE2" />
@@ -160,6 +148,15 @@ function WorldTree() {
     </group>
   );
 }
+
+/* ── 나무 꼭대기 높이 (닉네임 라벨 위치용) ───── */
+const treeLabelY: Record<number, number> = {
+  1: 0.9,
+  2: 1.6,
+  3: 2.8,
+  4: 4.0,
+  5: 5.3,
+};
 
 const treeByLevel: Record<number, () => React.JSX.Element> = {
   1: SeedTree,
@@ -169,10 +166,76 @@ const treeByLevel: Record<number, () => React.JSX.Element> = {
   5: WorldTree,
 };
 
-export default function VoxelTree({ user, onSelect }: Props) {
+/* ── 둥둥 떠다니는 닉네임 라벨 ──────────────── */
+function FloatingLabel({
+  nickname,
+  baseY,
+  seed,
+  onClick,
+}: {
+  nickname: string;
+  baseY: number;
+  seed: number;
+  onClick: () => void;
+}) {
+  const ref = useRef<Group>(null);
+
+  useFrame(({ clock }) => {
+    if (!ref.current) return;
+    ref.current.position.y =
+      baseY + Math.sin(clock.getElapsedTime() * 1.2 + seed) * 0.15;
+  });
+
+  return (
+    <group ref={ref} position={[0, baseY, 0]}>
+      <Html center distanceFactor={15}>
+        <div
+          onClick={onClick}
+          style={{
+            background: "rgba(255, 255, 255, 0.88)",
+            padding: "3px 10px",
+            borderRadius: "10px",
+            fontSize: "11px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            color: "#3D5C3A",
+            textAlign: "center",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            backdropFilter: "blur(4px)",
+            cursor: "pointer",
+          }}
+        >
+          {nickname}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+/* ── 클릭 영역 확대용 히트박스 ──────────────── */
+const hitboxHeight: Record<number, number> = {
+  1: 1.0,
+  2: 1.5,
+  3: 2.5,
+  4: 3.5,
+  5: 5.0,
+};
+
+function HitBox({ level }: { level: number }) {
+  const h = hitboxHeight[level] ?? 2;
+  return (
+    <mesh position={[0, h / 2, 0]} visible={false}>
+      <boxGeometry args={[2, h, 2]} />
+      <meshBasicMaterial />
+    </mesh>
+  );
+}
+
+export default function VoxelTree({ user, onSelect, surfaceY = 0, hideLabels = false }: Props) {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
-  const targetY = hovered ? 0.3 : 0;
+  const baseY = surfaceY;
+  const targetY = baseY + (hovered ? 0.3 : 0);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -181,11 +244,13 @@ export default function VoxelTree({ user, onSelect }: Props) {
   });
 
   const TreeComponent = treeByLevel[user.treeLevel] ?? SeedTree;
+  const labelY = treeLabelY[user.treeLevel] ?? 1.5;
+  const seed = parseInt(user.id.replace("forest-", ""), 10) || 0;
 
   return (
     <group
       ref={groupRef}
-      position={[user.x, 0, user.y]}
+      position={[user.x, baseY, user.y]}
       onPointerOver={(e) => {
         e.stopPropagation();
         setHovered(true);
@@ -200,7 +265,16 @@ export default function VoxelTree({ user, onSelect }: Props) {
         onSelect(user);
       }}
     >
+      <HitBox level={user.treeLevel} />
       <TreeComponent />
+      {!hideLabels && (
+        <FloatingLabel
+          nickname={user.nickname}
+          baseY={labelY}
+          seed={seed}
+          onClick={() => onSelect(user)}
+        />
+      )}
     </group>
   );
 }

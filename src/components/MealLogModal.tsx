@@ -24,7 +24,7 @@ const compromises = [
 type Phase = "select" | "photo" | "timer" | "complete";
 
 interface Props {
-  meal: { id: string; label: string; icon: string } | null;
+  meal: { id: string; label: string; Icon: () => React.JSX.Element } | null;
   onClose: () => void;
   onRecord: () => void;
 }
@@ -119,7 +119,7 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
           {phase === "select" && (
             <>
               <div className="mb-5 text-center">
-                <span className="text-3xl">{meal.icon}</span>
+                <meal.Icon />
                 <h2 className="mt-2 text-lg font-bold text-earth-800">
                   {meal.label} 기록
                 </h2>
@@ -287,7 +287,7 @@ export default function MealLogModal({ meal, onClose, onRecord }: Props) {
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
             >
-              <span className="text-5xl">{meal.icon}</span>
+              <meal.Icon />
               <h2 className="text-lg font-bold text-earth-800">기록 완료!</h2>
               <p className="text-sm text-sage-600">
                 +{earnedIP} IP를 획득했어요

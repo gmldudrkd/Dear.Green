@@ -42,6 +42,7 @@ export function generateMockFeed(): FeedItem[] {
       likes: Math.floor(Math.random() * 35),
       hasLiked: false,
       autoMessage: msg ? `${nickname}님이 ${msg}` : null,
+      comments: [],
     };
   });
 }

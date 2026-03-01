@@ -1,8 +1,10 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { FeedItem } from "@/types/feed";
 import HeartButton from "./HeartButton";
+import { quickReplies } from "@/lib/feedMessages";
 
 const dietLabels: Record<string, { label: string; color: string }> = {
   vegan: { label: "비건", color: "bg-sage-100 text-sage-700" },
@@ -31,9 +33,11 @@ interface Props {
   item: FeedItem;
   index: number;
   onLike: (id: string) => void;
+  onComment: (id: string, text: string) => void;
 }
 
-export default function FeedCard({ item, index, onLike }: Props) {
+export default function FeedCard({ item, index, onLike, onComment }: Props) {
+  const [showReplies, setShowReplies] = useState(false);
   const diet = dietLabels[item.dietLevel];
   const hasPhoto = !!item.photoPlaceholder;
 
@@ -85,12 +89,63 @@ export default function FeedCard({ item, index, onLike }: Props) {
             {mealLabels[item.mealType]}
           </span>
         </div>
-        <HeartButton
-          liked={item.hasLiked}
-          count={item.likes}
-          onToggle={() => onLike(item.id)}
-        />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowReplies((v) => !v)}
+            className="flex items-center gap-1 text-earth-400"
+          >
+            <span className="text-sm">💬</span>
+            {item.comments.length > 0 && (
+              <span className="text-xs">{item.comments.length}</span>
+            )}
+          </button>
+          <HeartButton
+            liked={item.hasLiked}
+            count={item.likes}
+            onToggle={() => onLike(item.id)}
+          />
+        </div>
       </div>
+
+      {/* 댓글 목록 */}
+      {item.comments.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5 border-t border-sand-100 pt-2">
+          {item.comments.map((c) => (
+            <p key={c.id} className="text-xs text-earth-500">
+              <span className="font-medium text-earth-600">나</span>{" "}
+              {c.text}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* 빠른 댓글 */}
+      <AnimatePresence>
+        {showReplies && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-2 flex flex-wrap gap-1.5 border-t border-sand-100 pt-2">
+              {quickReplies.map((text) => (
+                <button
+                  key={text}
+                  onClick={() => {
+                    onComment(item.id, text);
+                    setShowReplies(false);
+                  }}
+                  className="rounded-full bg-sage-50 px-3 py-1.5 text-[11px] text-sage-700 transition-colors hover:bg-sage-100 active:bg-sage-200"
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

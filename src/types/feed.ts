@@ -1,5 +1,11 @@
 export type DietLevel = "vegan" | "ovo-lacto" | "pesco" | "pollo" | "flexitarian";
 
+export interface FeedComment {
+  id: string;
+  text: string;
+  timestamp: number;
+}
+
 export interface FeedItem {
   id: string;
   nickname: string;
@@ -11,4 +17,5 @@ export interface FeedItem {
   likes: number;
   hasLiked: boolean;
   autoMessage: string | null;
+  comments: FeedComment[];
 }

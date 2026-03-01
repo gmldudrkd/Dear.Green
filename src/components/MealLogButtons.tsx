@@ -4,10 +4,39 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import MealLogModal from "@/components/MealLogModal";
 
+function SunriseIcon() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <path d="M6 26h24" stroke="#FB923C" strokeWidth="2" strokeLinecap="round" />
+      <path d="M9 26a9 9 0 0118 0" fill="#FBBF24" />
+      <path d="M18 10v-4M26 14l2.5-2.5M10 14L7.5 11.5M30 22h3M3 22h3" stroke="#FB923C" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <circle cx="18" cy="18" r="7" fill="#FBBF24" />
+      <path d="M18 5v4M18 27v4M5 18h4M27 18h4M9.3 9.3l2.8 2.8M23.9 23.9l2.8 2.8M9.3 26.7l2.8-2.8M23.9 12.1l2.8-2.8" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <path d="M27 20.5A10 10 0 1115.5 9a8 8 0 0011.5 11.5z" fill="#A78BFA" />
+      <circle cx="25" cy="10" r="1" fill="#C4B5FD" />
+      <circle cx="29" cy="16" r="0.7" fill="#C4B5FD" />
+    </svg>
+  );
+}
+
 const meals = [
-  { id: "breakfast", label: "아침", icon: "🌅" },
-  { id: "lunch", label: "점심", icon: "☀️" },
-  { id: "dinner", label: "저녁", icon: "🌙" },
+  { id: "breakfast", label: "아침", Icon: SunriseIcon },
+  { id: "lunch", label: "점심", Icon: SunIcon },
+  { id: "dinner", label: "저녁", Icon: MoonIcon },
 ] as const;
 
 function getTodayKey() {
@@ -77,8 +106,8 @@ export default function MealLogButtons() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <span className={`text-3xl ${done ? "grayscale" : ""}`}>
-                {meal.icon}
+              <span className={`${done ? "grayscale opacity-50" : ""}`}>
+                <meal.Icon />
               </span>
               <span
                 className={`text-sm font-medium ${done ? "text-earth-400" : "text-earth-700"}`}

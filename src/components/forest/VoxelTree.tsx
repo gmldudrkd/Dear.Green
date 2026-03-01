@@ -10,6 +10,7 @@ interface Props {
   user: ForestUser;
   onSelect: (user: ForestUser) => void;
   surfaceY?: number;
+  hideLabels?: boolean;
 }
 
 /* ── Lv.1 씨앗 ─────────────────────────────── */
@@ -170,24 +171,26 @@ function FloatingLabel({
   nickname,
   baseY,
   seed,
+  onClick,
 }: {
   nickname: string;
   baseY: number;
   seed: number;
+  onClick: () => void;
 }) {
   const ref = useRef<Group>(null);
 
   useFrame(({ clock }) => {
     if (!ref.current) return;
-    // 각 라벨마다 다른 위상(seed)으로 둥둥 떠다니는 효과
     ref.current.position.y =
       baseY + Math.sin(clock.getElapsedTime() * 1.2 + seed) * 0.15;
   });
 
   return (
     <group ref={ref} position={[0, baseY, 0]}>
-      <Html center distanceFactor={15} style={{ pointerEvents: "none" }}>
+      <Html center distanceFactor={15}>
         <div
+          onClick={onClick}
           style={{
             background: "rgba(255, 255, 255, 0.88)",
             padding: "3px 10px",
@@ -199,6 +202,7 @@ function FloatingLabel({
             textAlign: "center",
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             backdropFilter: "blur(4px)",
+            cursor: "pointer",
           }}
         >
           {nickname}
@@ -208,7 +212,26 @@ function FloatingLabel({
   );
 }
 
-export default function VoxelTree({ user, onSelect, surfaceY = 0 }: Props) {
+/* ── 클릭 영역 확대용 히트박스 ──────────────── */
+const hitboxHeight: Record<number, number> = {
+  1: 1.0,
+  2: 1.5,
+  3: 2.5,
+  4: 3.5,
+  5: 5.0,
+};
+
+function HitBox({ level }: { level: number }) {
+  const h = hitboxHeight[level] ?? 2;
+  return (
+    <mesh position={[0, h / 2, 0]} visible={false}>
+      <boxGeometry args={[2, h, 2]} />
+      <meshBasicMaterial />
+    </mesh>
+  );
+}
+
+export default function VoxelTree({ user, onSelect, surfaceY = 0, hideLabels = false }: Props) {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
   const baseY = surfaceY;
@@ -242,8 +265,16 @@ export default function VoxelTree({ user, onSelect, surfaceY = 0 }: Props) {
         onSelect(user);
       }}
     >
+      <HitBox level={user.treeLevel} />
       <TreeComponent />
-      <FloatingLabel nickname={user.nickname} baseY={labelY} seed={seed} />
+      {!hideLabels && (
+        <FloatingLabel
+          nickname={user.nickname}
+          baseY={labelY}
+          seed={seed}
+          onClick={() => onSelect(user)}
+        />
+      )}
     </group>
   );
 }

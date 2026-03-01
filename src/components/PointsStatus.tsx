@@ -12,7 +12,8 @@ export default function PointsStatus() {
   const nextStage = getNextStage(ip);
 
   return (
-    <div className="mx-6 w-full max-w-sm rounded-2xl bg-white p-5 shadow-sm">
+    <div className="w-full px-6">
+      <div className="rounded-2xl bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-xs text-earth-400">나의 인지 포인트</p>
@@ -45,6 +46,7 @@ export default function PointsStatus() {
         </div>
       )}
       <PlantEncyclopedia open={showEncyclopedia} onClose={() => setShowEncyclopedia(false)} />
+      </div>
     </div>
   );
 }

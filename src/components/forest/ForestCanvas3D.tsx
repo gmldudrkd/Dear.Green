@@ -155,6 +155,7 @@ export default function ForestCanvas3D() {
               user={user}
               onSelect={setSelectedUser}
               surfaceY={getSurfaceY(user.x, user.y)}
+              hideLabels={!!selectedUser}
             />
           ))}
 

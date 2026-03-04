@@ -1,6 +1,6 @@
 # Dear Earth Specification
 
-> 최종 업데이트: 2026-03-01
+> 최종 업데이트: 2026-03-04
 >
 > 이 문서는 Dear Earth 프로젝트의 기획, 디자인, 기술 스펙을 통합 관리하는 단일 소스입니다.
 > 모든 스펙 변경사항은 이 파일에 반영합니다.
@@ -180,8 +180,8 @@
 | 3D React 바인딩 | @react-three/fiber | 9.5.0 |
 | 3D 헬퍼 | @react-three/drei | 10.7.7 |
 | 폰트 | Caveat (Google Fonts), Pretendard Variable | |
-| Backend/DB (예정) | Supabase (Auth, DB, Realtime Feed) | |
-| Storage (예정) | Supabase Storage (Image upload) | |
+| Backend/DB | Supabase (Auth, DB, Realtime Feed) | @supabase/supabase-js |
+| Storage | Supabase Storage (Image upload) | |
 | 아이콘 | 인라인 SVG (크로스 플랫폼 일관성) | |
 
 ---
@@ -228,10 +228,11 @@ src/
 │   └── PointsContext.tsx   # IP 전역 상태 (localStorage 영속화)
 │
 ├── lib/
-│   ├── growth.ts           # 성장 단계 데이터 및 헬퍼 함수
-│   ├── mockFeed.ts         # 피드 mock 데이터 생성기
-│   ├── mockForest.ts       # 숲 유저 mock 데이터 생성기
-│   └── feedMessages.ts     # 자동 메시지 + 빠른 댓글 템플릿
+│   ├── supabase.ts          # Supabase 클라이언트 인스턴스
+│   ├── growth.ts            # 성장 단계 데이터 및 헬퍼 함수
+│   ├── mockFeed.ts          # 피드 mock 데이터 생성기
+│   ├── mockForest.ts        # 숲 유저 mock 데이터 생성기
+│   └── feedMessages.ts      # 자동 메시지 + 빠른 댓글 템플릿
 │
 └── types/
     ├── feed.ts             # FeedItem, DietLevel 타입
@@ -256,16 +257,146 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 
 ---
 
-## 10. 로컬 저장소 키
+## 10. 로컬 저장소 키 (Supabase 마이그레이션 대상)
 
-| 키 | 용도 |
-|----|------|
-| `dear-earth-ip` | 누적 IP 포인트 |
-| `dear-earth-meals` | 일별 식사 기록 상태 (`{date, meals[]}`) |
+| 키 | 용도 | 마이그레이션 대상 |
+|----|------|-------------------|
+| `dear-earth-ip` | 누적 IP 포인트 | `profiles.total_ip` |
+| `dear-earth-meals` | 일별 식사 기록 상태 (`{date, meals[]}`) | `meal_logs` 테이블 |
 
 ---
 
-## 11. 개발 명령어
+## 11. 데이터베이스 (Supabase)
+
+### 11.1 연결 정보
+
+- **Project URL:** 환경변수 `NEXT_PUBLIC_SUPABASE_URL` (`.env.local`)
+- **Anon Key:** 환경변수 `NEXT_PUBLIC_SUPABASE_ANON_KEY` (`.env.local`)
+- **클라이언트:** `src/lib/supabase.ts`
+- **마이그레이션:** `supabase/migrations/00001_initial_schema.sql`
+
+### 11.2 Enum Types (대문자 관리)
+
+| Enum 이름 | 값 |
+|-----------|-----|
+| `meal_level` | `VEGAN`, `OVO_LACTO`, `PESCO`, `POLLO`, `FLEXITARIAN` |
+| `meal_type` | `BREAKFAST`, `LUNCH`, `DINNER` |
+
+### 11.3 테이블 스키마
+
+#### `profiles` — 유저 프로필 (auth.users 확장)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| `id` | uuid | PK, FK→auth.users(id) ON DELETE CASCADE | 유저 ID |
+| `nickname` | text | NOT NULL | 닉네임 |
+| `avatar_emoji` | text | NOT NULL, DEFAULT '🌱' | 아바타 이모지 |
+| `total_ip` | integer | NOT NULL, DEFAULT 0, CHECK >= 0 | 누적 IP |
+| `forest_x` | real | NOT NULL, DEFAULT 0 | 숲 3D x좌표 (-8~8) |
+| `forest_y` | real | NOT NULL, DEFAULT 0 | 숲 3D y좌표 (-5~5) |
+| `created_at` | timestamptz | NOT NULL, DEFAULT now() | 가입일 |
+| `updated_at` | timestamptz | NOT NULL, DEFAULT now() | 수정일 |
+
+> `tree_level`은 저장하지 않음 — `get_tree_level(total_ip)` 함수로 계산
+
+#### `meal_logs` — 식사 기록 (= 피드 아이템)
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| `id` | uuid | PK, DEFAULT gen_random_uuid() | 기록 ID |
+| `user_id` | uuid | NOT NULL, FK→profiles(id) ON DELETE CASCADE | 작성자 |
+| `meal_date` | date | NOT NULL, DEFAULT CURRENT_DATE | 식사 날짜 |
+| `meal_type` | meal_type | NOT NULL | BREAKFAST/LUNCH/DINNER |
+| `meal_level` | meal_level | NOT NULL | VEGAN~FLEXITARIAN |
+| `compromise_checks` | smallint | NOT NULL, DEFAULT 0, CHECK 0~2 | 타협 체크 수 (+3 IP 각) |
+| `photo_path` | text | nullable | Supabase Storage 경로 |
+| `meditation_completed` | boolean | NOT NULL, DEFAULT false | 명상 완료 여부 |
+| `auto_message` | text | nullable | 자동 생성 메시지 |
+| `ip_earned` | integer | NOT NULL, DEFAULT 0, CHECK >= 0 | 이 식사로 획득한 IP |
+| `created_at` | timestamptz | NOT NULL, DEFAULT now() | 생성일 |
+
+> UNIQUE(user_id, meal_date, meal_type) — 하루 한 끼 한 번 제약
+
+#### `feed_likes` — 좋아요
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| `id` | uuid | PK, DEFAULT gen_random_uuid() | ID |
+| `meal_log_id` | uuid | NOT NULL, FK→meal_logs(id) ON DELETE CASCADE | 피드 아이템 |
+| `user_id` | uuid | NOT NULL, FK→profiles(id) ON DELETE CASCADE | 좋아요 누른 유저 |
+| `created_at` | timestamptz | NOT NULL, DEFAULT now() | 생성일 |
+
+> UNIQUE(meal_log_id, user_id) — 유저당 1좋아요
+
+#### `feed_comments` — 댓글
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| `id` | uuid | PK, DEFAULT gen_random_uuid() | ID |
+| `meal_log_id` | uuid | NOT NULL, FK→meal_logs(id) ON DELETE CASCADE | 피드 아이템 |
+| `user_id` | uuid | NOT NULL, FK→profiles(id) ON DELETE CASCADE | 작성자 |
+| `text` | text | NOT NULL, CHECK 길이 1~500 | 댓글 내용 |
+| `created_at` | timestamptz | NOT NULL, DEFAULT now() | 생성일 |
+
+#### `ip_transactions` — IP 변동 감사 로그
+
+| 컬럼 | 타입 | 제약 | 설명 |
+|------|------|------|------|
+| `id` | uuid | PK, DEFAULT gen_random_uuid() | ID |
+| `user_id` | uuid | NOT NULL, FK→profiles(id) ON DELETE CASCADE | 유저 |
+| `meal_log_id` | uuid | FK→meal_logs(id) ON DELETE SET NULL | 관련 식사 기록 |
+| `amount` | integer | NOT NULL | 변동량 (음수 가능) |
+| `reason` | text | NOT NULL | 사유 (e.g. meal:VEGAN,photo,meditation) |
+| `created_at` | timestamptz | NOT NULL, DEFAULT now() | 생성일 |
+
+### 11.4 Helper Functions
+
+| 함수 | 용도 |
+|------|------|
+| `get_tree_level(ip integer) → smallint` | IP → 나무 레벨(1-5) 계산. `growth.ts` `getStage()` 포팅 |
+| `calculate_meal_ip(meal_level, checks, photo, meditation) → integer` | 식사 IP 계산. `MealLogModal.tsx` 로직 포팅 |
+
+### 11.5 Triggers
+
+| 트리거 | 테이블 | 타이밍 | 동작 |
+|--------|--------|--------|------|
+| `trg_meal_log_insert` | meal_logs | BEFORE INSERT | IP 자동 계산, `profiles.total_ip` 갱신, `ip_transactions` 감사 로그 기록 |
+| `on_auth_user_created` | auth.users | AFTER INSERT | `profiles` 자동 생성 (닉네임, 이모지, 랜덤 숲 좌표) |
+
+### 11.6 Views
+
+| 뷰 | 매칭 인터페이스 | 용도 |
+|----|----------------|------|
+| `feed_view` | `FeedItem` (feed.ts) | 피드 조회 (meal_logs + profiles + 좋아요/댓글 수 집계) |
+| `forest_view` | `ForestUser` (forest.ts) | 숲 조회 (profiles + tree_level 계산 + 최근 meal_level) |
+
+### 11.7 Row Level Security (RLS)
+
+| 테이블 | SELECT | INSERT | UPDATE | DELETE |
+|--------|--------|--------|--------|--------|
+| profiles | 전체 공개 | 트리거 자동 | 본인만 | - |
+| meal_logs | 전체 공개 | 본인만 | 본인만 | 본인만 |
+| feed_likes | 전체 공개 | 본인만 | - | 본인만 |
+| feed_comments | 전체 공개 | 본인만 | - | 본인만 |
+| ip_transactions | 본인만 | 트리거 자동 | - | - |
+
+### 11.8 Storage
+
+| 버킷 | 공개 여부 | 용량 제한 | 허용 MIME | 경로 규칙 |
+|------|-----------|-----------|-----------|-----------|
+| `meal-photos` | private | 5MB | jpeg, png, webp, heic | `{user_id}/{meal_log_id}.jpg` |
+
+### 11.9 Realtime 구독
+
+| 테이블 | 이벤트 | 용도 |
+|--------|--------|------|
+| meal_logs | INSERT | 새 식사 기록이 피드에 실시간 반영 |
+| feed_likes | INSERT, DELETE | 좋아요 수 실시간 갱신 |
+| feed_comments | INSERT | 새 댓글 실시간 반영 |
+
+---
+
+## 12. 개발 명령어
 
 ```bash
 npm run dev      # 개발 서버 (http://localhost:3000)
@@ -276,7 +407,7 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 12. 기획 전략 메모
+## 13. 기획 전략 메모
 
 1. **데이터 최소화:** MVP 버전에서는 고해상도 이미지보다 가벼운 용량의 이미지를 권장하여 로딩 속도 최적화.
 2. **소셜 장치:** 피드 탭에서 '좋아요' 수가 많은 유저의 나무는 숲 탭에서 살짝 빛나게 하여 참여 동기 부여.
@@ -284,11 +415,11 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 13. 향후 계획 (미구현)
+## 14. 향후 계획 (미구현)
 
-- Supabase 연동 (인증, DB, 실시간 구독)
-- 실제 사용자 피드 및 숲 데이터
-- 이미지 업로드 (식사 사진)
+- Supabase Auth 연동 (인증 흐름)
+- 컴포넌트 Supabase 연동 (localStorage → DB 전환)
+- 실시간 피드 구독 (Realtime)
 - 푸시 알림
 - 랭킹 시스템
 - 밤 반딧불이 / 무지개 등 환경 효과
@@ -301,4 +432,5 @@ npm run lint     # ESLint 실행
 
 | 날짜 | 내용 |
 |------|------|
+| 2026-03-04 | Supabase DB 스키마 설계 및 연동 설정 (섹션 11 추가), 기술 스택·프로젝트 구조·향후 계획 업데이트 |
 | 2026-03-01 | README.md, TECHNICAL.md, plan_v2.md 통합하여 초기 문서 생성 |

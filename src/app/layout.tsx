@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Caveat } from "next/font/google";
+import { AuthProvider } from "@/context/AuthContext";
 import { PointsProvider } from "@/context/PointsContext";
 import "./globals.css";
 
@@ -22,7 +23,9 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={`${caveat.variable} antialiased`}>
+        <AuthProvider>
           <PointsProvider>{children}</PointsProvider>
+        </AuthProvider>
         </body>
     </html>
   );

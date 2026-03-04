@@ -191,7 +191,7 @@
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # 루트 레이아웃 (Caveat 폰트, PointsProvider)
+│   ├── layout.tsx          # 루트 레이아웃 (Caveat 폰트, AuthProvider, PointsProvider)
 │   ├── page.tsx            # 홈 - TabShell 렌더링
 │   ├── globals.css         # Tailwind 테마 (sage/sand/earth 컬러)
 │   └── favicon.ico
@@ -217,7 +217,7 @@ src/
 │   ├── timer/
 │   │   └── MindfulnessTimer.tsx # 10초 명상 타이머 (SVG 원형 프로그레스)
 │   │
-│   ├── Header.tsx          # 상단 헤더 (Caveat 로고 + 지구 아이콘 로그인)
+│   ├── Header.tsx          # 상단 헤더 (Caveat 로고 + Google OAuth 로그인/프로필)
 │   ├── BlobCharacter.tsx   # 성장 단계별 캐릭터 (5종)
 │   ├── MealLogButtons.tsx  # 아침/점심/저녁 기록 버튼
 │   ├── MealLogModal.tsx    # 식사 기록 모달 (3단계: 선택→타이머→완료)
@@ -225,6 +225,7 @@ src/
 │   └── PlantEncyclopedia.tsx # 식물 도감 바텀시트
 │
 ├── context/
+│   ├── AuthContext.tsx     # 인증 상태 관리 (Google OAuth, 세션)
 │   └── PointsContext.tsx   # IP 전역 상태 (localStorage 영속화)
 │
 ├── lib/
@@ -273,7 +274,7 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 - **Project URL:** 환경변수 `NEXT_PUBLIC_SUPABASE_URL` (`.env.local`)
 - **Anon Key:** 환경변수 `NEXT_PUBLIC_SUPABASE_ANON_KEY` (`.env.local`)
 - **클라이언트:** `src/lib/supabase.ts`
-- **마이그레이션:** `supabase/migrations/00001_initial_schema.sql`
+- **마이그레이션:** `supabase/migrations/00001_initial_schema.sql`, `00002_auth_google_oauth.sql`
 
 ### 11.2 Enum Types (대문자 관리)
 
@@ -291,6 +292,7 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 | `id` | uuid | PK, FK→auth.users(id) ON DELETE CASCADE | 유저 ID |
 | `nickname` | text | NOT NULL | 닉네임 |
 | `avatar_emoji` | text | NOT NULL, DEFAULT '🌱' | 아바타 이모지 |
+| `avatar_url` | text | nullable | Google 프로필 사진 URL |
 | `total_ip` | integer | NOT NULL, DEFAULT 0, CHECK >= 0 | 누적 IP |
 | `forest_x` | real | NOT NULL, DEFAULT 0 | 숲 3D x좌표 (-8~8) |
 | `forest_y` | real | NOT NULL, DEFAULT 0 | 숲 3D y좌표 (-5~5) |
@@ -361,7 +363,7 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 | 트리거 | 테이블 | 타이밍 | 동작 |
 |--------|--------|--------|------|
 | `trg_meal_log_insert` | meal_logs | BEFORE INSERT | IP 자동 계산, `profiles.total_ip` 갱신, `ip_transactions` 감사 로그 기록 |
-| `on_auth_user_created` | auth.users | AFTER INSERT | `profiles` 자동 생성 (닉네임, 이모지, 랜덤 숲 좌표) |
+| `on_auth_user_created` | auth.users | AFTER INSERT | `profiles` 자동 생성 (닉네임, 아바타 URL, 이모지, 랜덤 숲 좌표). Google OAuth 시 `full_name`/`name`/`avatar_url` 메타데이터 자동 매핑 |
 
 ### 11.6 Views
 
@@ -396,7 +398,63 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 
 ---
 
-## 12. 개발 명령어
+## 12. 인증 (Google OAuth)
+
+### 12.1 인증 방식
+
+- **Provider:** Supabase Auth + Google OAuth 2.0
+- **흐름:** Client-side implicit grant (URL hash fragment)
+- **패키지:** `@supabase/supabase-js` 내장 OAuth 지원 (추가 설치 없음)
+
+### 12.2 OAuth 흐름
+
+```
+1. "Google로 로그인" 클릭
+2. → supabase.auth.signInWithOAuth({ provider: 'google' })
+3. → Google 인증 페이지 리디렉트
+4. → Supabase 콜백 (https://<project>.supabase.co/auth/v1/callback)
+5. → 앱 루트로 리디렉트 (URL hash에 토큰 포함)
+6. → AuthProvider의 getSession()이 토큰 추출 → 세션 설정
+7. → DB on_auth_user_created 트리거 → profiles 자동 생성
+```
+
+### 12.3 아키텍처
+
+- **AuthContext** (`src/context/AuthContext.tsx`): `user`, `session`, `loading` 상태 관리
+  - `signInWithGoogle()`: Google OAuth 시작
+  - `signOut()`: 로그아웃
+  - `supabase.auth.getSession()`: 초기 세션 복원 + OAuth 콜백 처리
+  - `supabase.auth.onAuthStateChange()`: 세션 변경 리스너 (토큰 갱신, 로그아웃 등)
+- **AuthProvider**: `layout.tsx`에서 `PointsProvider`를 감싸는 외부 래퍼
+- **Header.tsx**: 로그인 시 Google 프로필 사진/이름/이메일 표시, 로그아웃 버튼
+
+### 12.4 Google 메타데이터 매핑
+
+| Google 메타데이터 | profiles 컬럼 | 비고 |
+|-------------------|---------------|------|
+| `full_name` / `name` | `nickname` | COALESCE 체인으로 폴백 |
+| `avatar_url` | `avatar_url` | nullable, 없으면 `avatar_emoji` 사용 |
+| `email` | auth.users.email | Supabase 자동 관리 |
+
+### 12.5 세션 관리
+
+- Supabase JS가 `localStorage`에 토큰 자동 저장 → 새로고침 시 세션 유지
+- `onAuthStateChange` 리스너가 토큰 자동 갱신 처리
+- 콘텐츠 게이팅 없음 — 로그인 없이도 앱 탐색 가능
+
+### 12.6 외부 설정 (Supabase Dashboard + Google Cloud Console)
+
+| 설정 | 위치 | 값 |
+|------|------|----|
+| Google Provider 활성화 | Supabase → Authentication → Providers | Client ID + Secret 입력 |
+| Site URL | Supabase → Authentication → URL Configuration | 배포 도메인 (e.g. `https://dearearth.app`) |
+| Redirect URLs | Supabase → Authentication → URL Configuration | `http://localhost:3000` (개발용) |
+| OAuth Client ID | Google Cloud Console → Credentials | Web application 타입 |
+| Authorized redirect URI | Google Cloud Console → Credentials | `https://<project>.supabase.co/auth/v1/callback` |
+
+---
+
+## 13. 개발 명령어
 
 ```bash
 npm run dev      # 개발 서버 (http://localhost:3000)
@@ -407,7 +465,7 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 13. 기획 전략 메모
+## 14. 기획 전략 메모
 
 1. **데이터 최소화:** MVP 버전에서는 고해상도 이미지보다 가벼운 용량의 이미지를 권장하여 로딩 속도 최적화.
 2. **소셜 장치:** 피드 탭에서 '좋아요' 수가 많은 유저의 나무는 숲 탭에서 살짝 빛나게 하여 참여 동기 부여.
@@ -415,9 +473,8 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 14. 향후 계획 (미구현)
+## 15. 향후 계획 (미구현)
 
-- Supabase Auth 연동 (인증 흐름)
 - 컴포넌트 Supabase 연동 (localStorage → DB 전환)
 - 실시간 피드 구독 (Realtime)
 - 푸시 알림
@@ -432,5 +489,6 @@ npm run lint     # ESLint 실행
 
 | 날짜 | 내용 |
 |------|------|
+| 2026-03-04 | Google OAuth 인증 구현 (섹션 12 추가): AuthContext, Header Google 로그인, profiles.avatar_url 컬럼 추가, handle_new_user 트리거 업데이트 |
 | 2026-03-04 | Supabase DB 스키마 설계 및 연동 설정 (섹션 11 추가), 기술 스택·프로젝트 구조·향후 계획 업데이트 |
 | 2026-03-01 | README.md, TECHNICAL.md, plan_v2.md 통합하여 초기 문서 생성 |

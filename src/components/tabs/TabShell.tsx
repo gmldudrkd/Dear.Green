@@ -31,7 +31,7 @@ export default function TabShell() {
 
   return (
     <div className="flex h-full flex-col">
-      <Header />
+      <Header onLogoClick={() => handleTabChange("my-dear")} />
 
       <main className="flex min-h-0 flex-1 flex-col items-center gap-8 overflow-x-hidden overflow-y-auto pb-4">
         <AnimatePresence mode="wait" custom={directionRef.current}>

@@ -1,6 +1,6 @@
 # Dear Earth Specification
 
-> 최종 업데이트: 2026-03-04
+> 최종 업데이트: 2026-03-05
 >
 > 이 문서는 Dear Earth 프로젝트의 기획, 디자인, 기술 스펙을 통합 관리하는 단일 소스입니다.
 > 모든 스펙 변경사항은 이 파일에 반영합니다.
@@ -31,6 +31,8 @@
 | **우리의 숲** | **Our Forest** | 가상 현실 공간에 심어진 모든 가입자의 나무 탐험 |
 
 클라이언트 사이드 탭 방식 (Next.js 파일 라우팅 아님). `TabShell`이 `AnimatePresence`로 좌우 슬라이드 전환 애니메이션 처리.
+
+**헤더 로고 네비게이션:** "Dear Earth" 로고 클릭 시 My Dear 탭으로 이동.
 
 ---
 
@@ -192,9 +194,12 @@
 src/
 ├── app/
 │   ├── layout.tsx          # 루트 레이아웃 (Caveat 폰트, AuthProvider, PointsProvider)
-│   ├── page.tsx            # 홈 - TabShell 렌더링
-│   ├── globals.css         # Tailwind 테마 (sage/sand/earth 컬러)
-│   └── favicon.ico
+│   ├── page.tsx            # 홈 - 인증 상태 분기 (LoginScreen / TabShell)
+│   ├── globals.css         # Tailwind 테마 (sage/sand/earth 컬러) + twinkle 애니메이션
+│   ├── manifest.ts         # PWA Web App Manifest (standalone, 아이콘)
+│   ├── icon.svg            # 복셀 지구 파비콘 (SVG)
+│   ├── apple-icon.png      # Apple Touch Icon (180x180)
+│   └── favicon.ico         # 레거시 파비콘 (32x32)
 │
 ├── components/
 │   ├── tabs/               # 탭 네비게이션
@@ -217,7 +222,11 @@ src/
 │   ├── timer/
 │   │   └── MindfulnessTimer.tsx # 10초 명상 타이머 (SVG 원형 프로그레스)
 │   │
-│   ├── Header.tsx          # 상단 헤더 (Caveat 로고 + Google OAuth 로그인/프로필)
+│   ├── login/              # 로그인 화면
+│   │   ├── LoginScreen.tsx  #   복셀 지구 + Google 로그인 CTA
+│   │   └── VoxelEarth.tsx   #   3D 복셀 지구 (위경도 대륙 맵, 자동 회전)
+│   │
+│   ├── Header.tsx          # 상단 헤더 (로고 클릭→My Dear, Google OAuth 프로필)
 │   ├── BlobCharacter.tsx   # 성장 단계별 캐릭터 (5종)
 │   ├── MealLogButtons.tsx  # 아침/점심/저녁 기록 버튼
 │   ├── MealLogModal.tsx    # 식사 기록 모달 (3단계: 선택→타이머→완료)
@@ -406,7 +415,19 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 - **흐름:** Client-side implicit grant (URL hash fragment)
 - **패키지:** `@supabase/supabase-js` 내장 OAuth 지원 (추가 설치 없음)
 
-### 12.2 OAuth 흐름
+### 12.2 로그인 화면
+
+- **게이팅:** `page.tsx`에서 `useAuth()` → 비로그인 시 `LoginScreen` 렌더링, 로그인 시 `TabShell` 렌더링
+- **비주얼:** 우주 배경 그라데이션 (`#0B1120` → `#1A3050`) + 반짝이는 별 애니메이션 (60개, `twinkle` keyframe)
+- **복셀 지구:** `VoxelEarth.tsx` — 위도/경도 기반 대륙 맵으로 육지(녹색 계열)/바다(파란색 계열) 구분, Y축 자동 회전
+  - 극지방: 흰색, 고위도: 짙은 녹색, 중위도: 녹색, 열대: 밝은 녹색
+  - `OrbitControls`로 드래그 인터랙션 가능 (줌/팬 비활성화)
+- **CTA 버튼:** "Google로 시작하기" — 흰색 라운드 버튼 + Google 로고 SVG
+- **타이틀:** "Dear Earth" (Caveat 폰트) + 서브텍스트
+- **컴포넌트:** `src/components/login/LoginScreen.tsx`, `src/components/login/VoxelEarth.tsx`
+- **동적 임포트:** `next/dynamic` SSR 비활성화 (WebGL)
+
+### 12.3 OAuth 흐름
 
 ```
 1. "Google로 로그인" 클릭
@@ -426,7 +447,7 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
   - `supabase.auth.getSession()`: 초기 세션 복원 + OAuth 콜백 처리
   - `supabase.auth.onAuthStateChange()`: 세션 변경 리스너 (토큰 갱신, 로그아웃 등)
 - **AuthProvider**: `layout.tsx`에서 `PointsProvider`를 감싸는 외부 래퍼
-- **Header.tsx**: 로그인 시 Google 프로필 사진/이름/이메일 표시, 로그아웃 버튼
+- **Header.tsx**: 로그인 시 Google 프로필 사진/이름/이메일 표시, 로그아웃 버튼. "Dear Earth" 로고 클릭 시 `onLogoClick` 콜백으로 My Dear 탭 이동
 
 ### 12.4 Google 메타데이터 매핑
 
@@ -440,7 +461,7 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 
 - Supabase JS가 `localStorage`에 토큰 자동 저장 → 새로고침 시 세션 유지
 - `onAuthStateChange` 리스너가 토큰 자동 갱신 처리
-- 콘텐츠 게이팅 없음 — 로그인 없이도 앱 탐색 가능
+- **로그인 화면 게이팅** — 비로그인 시 로그인 화면 표시, 로그인 후 메인 앱 진입
 
 ### 12.6 외부 설정 (Supabase Dashboard + Google Cloud Console)
 
@@ -454,7 +475,20 @@ Tailwind CSS 4 `@theme inline` 방식으로 커스텀 컬러 정의.
 
 ---
 
-## 13. 개발 명령어
+## 13. PWA 설정
+
+- **Web App Manifest** (`src/app/manifest.ts`): `display: standalone`, `theme_color: #5c845c`, `background_color: #faf8f5`
+- **아이콘:** 복셀 지구 디자인 (대륙/바다 블록 + 극지방 얼음)
+  - `icon.svg` — 브라우저 파비콘 (SVG, 모던 브라우저)
+  - `favicon.ico` — 레거시 파비콘 (32x32)
+  - `apple-icon.png` — iOS 홈화면 아이콘 (180x180)
+  - `public/icon-192.png` — Android PWA 아이콘 (192x192)
+  - `public/icon-512.png` — Android PWA 스플래시 (512x512)
+- **Apple Web App:** `capable: true`, `statusBarStyle: black-translucent`, `title: Dear Earth`
+
+---
+
+## 14. 개발 명령어
 
 ```bash
 npm run dev      # 개발 서버 (http://localhost:3000)
@@ -465,7 +499,7 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 14. 기획 전략 메모
+## 15. 기획 전략 메모
 
 1. **데이터 최소화:** MVP 버전에서는 고해상도 이미지보다 가벼운 용량의 이미지를 권장하여 로딩 속도 최적화.
 2. **소셜 장치:** 피드 탭에서 '좋아요' 수가 많은 유저의 나무는 숲 탭에서 살짝 빛나게 하여 참여 동기 부여.
@@ -473,7 +507,7 @@ npm run lint     # ESLint 실행
 
 ---
 
-## 15. 향후 계획 (미구현)
+## 16. 향후 계획 (미구현)
 
 - 컴포넌트 Supabase 연동 (localStorage → DB 전환)
 - 실시간 피드 구독 (Realtime)
@@ -489,6 +523,7 @@ npm run lint     # ESLint 실행
 
 | 날짜 | 내용 |
 |------|------|
+| 2026-03-05 | 로그인 화면 구현 (섹션 12.2 추가): 복셀 지구 회전 + Google 로그인 CTA, 비로그인 게이팅. PWA 아이콘/매니페스트 설정 (섹션 13 추가). 헤더 로고 클릭 시 My Dear 탭 이동 |
 | 2026-03-04 | Google OAuth 인증 구현 (섹션 12 추가): AuthContext, Header Google 로그인, profiles.avatar_url 컬럼 추가, handle_new_user 트리거 업데이트 |
 | 2026-03-04 | Supabase DB 스키마 설계 및 연동 설정 (섹션 11 추가), 기술 스택·프로젝트 구조·향후 계획 업데이트 |
 | 2026-03-01 | README.md, TECHNICAL.md, plan_v2.md 통합하여 초기 문서 생성 |

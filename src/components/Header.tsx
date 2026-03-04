@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 
-export default function Header() {
+export default function Header({ onLogoClick }: { onLogoClick?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, loading, signInWithGoogle, signOut } = useAuth();
@@ -39,12 +39,13 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-30 bg-sand-50/90 px-6 py-4 backdrop-blur-sm">
       <div className="mx-auto flex max-w-md items-center justify-between">
-        <h1
-          className="text-3xl font-bold text-earth-500"
+        <button
+          onClick={onLogoClick}
+          className="cursor-pointer text-3xl font-bold text-earth-500"
           style={{ fontFamily: "var(--font-caveat)" }}
         >
           Dear Earth
-        </h1>
+        </button>
 
         {/* 프로필 아이콘 + 드롭다운 */}
         <div className="relative" ref={menuRef}>

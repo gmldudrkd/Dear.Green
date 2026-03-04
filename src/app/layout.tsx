@@ -13,6 +13,11 @@ const caveat = Caveat({
 export const metadata: Metadata = {
   title: "Dear Earth - 친애하는 지구에게",
   description: "당신의 식탁과 지구 사이, 다정한 거리를 만드는 기록",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Dear Earth",
+  },
 };
 
 export default function RootLayout({

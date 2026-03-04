@@ -35,6 +35,16 @@
   --color-earth-900: #553a30;
 }
 
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
 body {
   background-color: var(--color-sand-50);
   color: var(--color-earth-900);

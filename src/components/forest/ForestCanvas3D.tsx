@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import VoxelTree from "./VoxelTree";
+import VoxelCelestial from "./VoxelCelestial";
 import TreePopup from "./TreePopup";
 import { generateForestUsers } from "@/lib/mockForest";
 import type { ForestUser } from "@/types/forest";
@@ -148,6 +149,7 @@ export default function ForestCanvas3D() {
           <Lighting />
           <Ground />
           <Decorations />
+          <VoxelCelestial />
 
           {users.map((user) => (
             <VoxelTree
